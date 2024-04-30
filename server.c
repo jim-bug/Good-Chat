@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "chat.h"
 
 typedef struct MSG {
     int value;
@@ -25,7 +26,7 @@ int main(int argc, char* argv[]) {
 
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(8085);
+    server.sin_port = htons(SERVER_PORT);
 
     if (bind(server_sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
         perror("Binding server -> Errore");
