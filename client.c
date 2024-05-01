@@ -6,18 +6,13 @@
 #include <stdlib.h>
 #include <netdb.h> // Aggiunta per gethostbyname
 
-typedef struct MSG {
-    int value;
-    char tipo[150];
-} MSGI;
-
 void scrivi(int sock, MSGI* message){
 	   while(1){
             char msg[150];
             printf("Inserisci qualcosa da inviare al server: ");
             fgets(msg, 150, stdin);
 	    printf("\n%s\n", msg); 
-
+	   msg[strcspn(msg, "\n")] = '\0';
             if (write(sock, msg, 150) < 0) { // Controllo sulla quantità inviata
                         perror("Errore durante l'invio del messaggio");
                         exit(-1);
