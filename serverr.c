@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Risoluzione dell'indirizzo IP del server
-        hp = gethostbyname("localhost");
+        hp = gethostbyname("192.168.0.62");
         if (hp == NULL) {
             fprintf(stderr, "Errore nella risoluzione dell'host\n");
             exit(EXIT_FAILURE);
