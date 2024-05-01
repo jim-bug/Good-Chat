@@ -29,11 +29,11 @@ void* get_message_from_host(void* arg) {
             break;
         }
         buf[bytes_read] = '\0';
-       
+        mvprintw(i, 1, "Client: %s", buf); 
         pthread_mutex_lock(&mutex);
          i++;
         pthread_mutex_unlock(&mutex);
-        mvprintw(i, 1, "Client: %s", buf);
+//        mvprintw(i, 1, "Client: %s", buf);
        refresh();
     }
 
@@ -51,11 +51,13 @@ void* send_message_to_host(void* arg) {
             perror("Errore nella scrittura sul socket 2");
             break;
         }
+        mvprintw(i, 1, "Inserisci il messaggio da inviare al client: ");
+        mvscanw(i, 70, "%s", buf);
         pthread_mutex_lock(&mutex);
 	i++;
         pthread_mutex_unlock(&mutex);
-        mvprintw(i, 1, "Inserisci il messaggio da inviare al client: ");
-        mvscanw(i, 70, "%s", buf);
+//        mvprintw(i, 1, "Inserisci il messaggio da inviare al client: ");
+//        mvscanw(i, 70, "%s", buf);
         refresh();
     }
 
@@ -95,6 +97,7 @@ int main(int argc, char* argv[]) {
         // Binding del socket del server all'indirizzo locale
         if (bind(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
             perror("Errore nel binding del socket del server");
+            endwin();
             exit(EXIT_FAILURE);
         }
 
