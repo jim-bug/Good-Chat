@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <netdb.h>
 #include <ncurses.h>
-
+#include <arpa/inet.h>
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // Inizializzazione del mutex
 WINDOW *win;
@@ -138,8 +138,9 @@ int main(int argc, char* argv[]) {
     } else if (strcmp(argv[1], "-c") == 0) {
         int client_sock;
         struct sockaddr_in server_addr;
+        struct in_addr addr;
         struct hostent* hp;
-
+	inet_aton("192.168.0.62", &addr);
         // Creazione del socket del client
         client_sock = socket(AF_INET, SOCK_STREAM, 0);
         if (client_sock < 0) {
@@ -148,7 +149,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Risoluzione dell'indirizzo IP del server
-        hp = gethostbyname("192.168.0.62");
+        hp = gethostbyaddr(&addr, sizeof(addr), AF_INET);
         if (hp == NULL) {
             fprintf(stderr, "Errore nella risoluzione dell'host\n");
             exit(EXIT_FAILURE);
