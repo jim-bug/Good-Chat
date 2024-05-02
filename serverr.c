@@ -10,7 +10,6 @@
 #include <arpa/inet.h>
 
 
-// pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // Inizializzazione del mutex
 WINDOW* input_window;
 WINDOW* output_window;
 
