@@ -9,10 +9,21 @@
 #include <ncurses.h>
 #include <arpa/inet.h>
 
+#define SERVER_PORT 8085
+
+/*
+*Autori: Gianluca Pepe e Ignazio Leonardo Calogero Sperandeo.
+*Data: 04/05/2024
+*Consegna: Realizzare una chat in C che presenti un'interfaccia testuale. La chat deve permettere il dialogo tra due terminali nella stessa LAN e in LAN diverse.
+*Link al repo: https://github.com/jim-bug/Good-Chat
+*Nome progetto: Good-Chat
+*/
+
 
 WINDOW* input_window;
 WINDOW* output_window;
 
+// Funzione che crea una finestra con una box
 void create_window(WINDOW** new_win, int width, int height, int x, int y){
 	*new_win = newwin(height, width, y, x);
         refresh();
@@ -65,20 +76,20 @@ void* send_message_to_host(void* arg) {
 }
 
 int main(int argc, char* argv[]) {
-    initscr();
+    initscr(); // Inizializza la finestra ncurses principale
     int y, x;
-    getmaxyx(stdscr, y, x);
+    getmaxyx(stdscr, y, x); // Ottenere le dimensioni dello schermo
     create_window(&input_window, x/2, y, 0, 0);
     create_window(&output_window, x/2, y, x/2, 0);
     pthread_t receive_thread;
     pthread_t write_thread;
 
     if ((strcmp(argv[1], "-s") != 0 && strcmp(argv[1], "-c"))) {
-        fprintf(stderr, "Utilizzo: %s -s|-c\n", argv[0]);
+        printf(stderr, "Usare: %s -s|-c ip port\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    if (strcmp(argv[1], "-s") == 0) {
+    else if (strcmp(argv[1], "-s") == 0) {
         int server_sock, client_sock;
         struct sockaddr_in server_addr, client_addr;
         socklen_t client_len = sizeof(client_addr);
@@ -95,7 +106,7 @@ int main(int argc, char* argv[]) {
         memset(&server_addr, 0, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
         server_addr.sin_addr.s_addr = INADDR_ANY;
-        server_addr.sin_port = htons(8085);
+        server_addr.sin_port = htons(SERVER_PORT);
 
         // Binding del socket del server all'indirizzo locale
         if (bind(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
@@ -146,7 +157,7 @@ int main(int argc, char* argv[]) {
         memset(&server_addr, 0, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
         // memcpy(&server_addr.sin_addr, hp->h_addr, hp->h_length);
-        server_addr.sin_port = htons(8085);
+        server_addr.sin_port = htons(SERVER_PORT);
         inet_pton(AF_INET, argv[2], &server_addr.sin_addr);
 
         // Connessione al server
@@ -162,7 +173,9 @@ int main(int argc, char* argv[]) {
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
 
-    }
+    } else {
+    	printf("\tHelp good-chat!\nUsage: -s | -c ip port\n-s: Opzione server\n2)-c Opzione client, speficare anche l'ip e il numero di porta del server");
+	  }
     wrefresh(input_window);
     wrefresh(output_window);
     delwin(input_window);
