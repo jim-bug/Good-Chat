@@ -1,0 +1,4 @@
+Creazione mezzo socket del server -> OK
+Binding del mezzo socket del server -> OK
+Listen del mezzo socket del server -> OK
+Accettazione della connessione -> OK

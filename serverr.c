@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <netdb.h>
@@ -10,33 +11,36 @@
 #include <arpa/inet.h>
 
 #define SERVER_PORT 8085
+#define MAX_LENGTH_MSG 1024
 
 /*
-*Autori: Gianluca Pepe e Ignazio Leonardo Calogero Sperandeo.
-*Data: 04/05/2024
-*Consegna: Realizzare una chat in C che presenti un'interfaccia testuale. La chat deve permettere il dialogo tra due terminali nella stessa LAN e in LAN diverse.
-*Link al repo: https://github.com/jim-bug/Good-Chat
-*Nome progetto: Good-Chat
+ * Autori: Gianluca Pepe e Ignazio Leonardo Calogero Sperandeo.
+ * Data: 04/05/2024
+ * Consegna: Realizzare una chat in C che presenti una CLI. La chat deve permettere il dialogo tra due terminali nella stessa LAN e in LAN diverse.
+ * Link al repo: https://github.com/jim-bug/Good-Chat
+ * Nome progetto: Good-Chat
 */
 
-
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 WINDOW* input_window;
 WINDOW* output_window;
-
+int row = 1;
+int state = 1;
 // Funzione che crea una finestra con una box
 void create_window(WINDOW** new_win, int width, int height, int x, int y){
-	*new_win = newwin(height, width, y, x);
+	    *new_win = newwin(height, width, y, x);
         refresh();
-        box(*new_win, '|', '|');
+        // box(*new_win, '|', '|');
         wrefresh(*new_win);
 }
 
 void* get_message_from_host(void* arg) {
     int sockfd = *((int*)arg);
-    int row = 1;
-    char buf[300]; // Buffer per i dati
+    // int row = 1;
+    char buf[MAX_LENGTH_MSG]; // Buffer per i dati
     while (1) {
-        ssize_t bytes_read = read(sockfd, buf, sizeof(buf));
+        state = 0;
+        ssize_t bytes_read = recv(sockfd, buf, sizeof(buf), 0);
         if (bytes_read < 0) {
             perror("Errore nella lettura dal sockettttttt");
             break;
@@ -44,6 +48,10 @@ void* get_message_from_host(void* arg) {
             break;
         }
         buf[bytes_read] = '\0';
+        state = 1;
+        pthread_mutex_lock(&mutex);
+        row ++;
+        pthread_mutex_unlock(&mutex);
 //        snprintf(buf, 300, "Client: %s", buf);
         mvwprintw(output_window, row, 1, "Client> %s", buf);
         wrefresh(output_window);
@@ -56,20 +64,23 @@ void* get_message_from_host(void* arg) {
 void* send_message_to_host(void* arg) {
     int sockfd = *((int*)arg);
     int row = 1;
-    char buf[150];
+    char buf[MAX_LENGTH_MSG];
 
     while (1) {
-        mvwprintw(input_window, row, 1, "Me>");
-        mvwgetstr(input_window, row, 4, buf);
-        buf[strcspn(buf, "\n")] = '\0';
-        wrefresh(input_window);
-        ssize_t bytes_written = write(sockfd, buf, strlen(buf));
-        if (bytes_written < 0) {
-            perror("Errore nella scrittura sul socket 2");
-            break;
+        if(state != 0 && getch()){
+            pthread_mutex_lock(&mutex);
+                row ++;
+            pthread_mutex_unlock(&mutex);
+            mvwprintw(input_window, row, 1, "Me>");
+            mvwgetstr(input_window, row, 4, buf);
+            buf[strcspn(buf, "\n")] = '\0';
+            wrefresh(input_window);
+            ssize_t bytes_written = write(sockfd, buf, sizeof(buf));
+            if (bytes_written < 0) {
+                perror("Errore nella scrittura sul socket 2");
+                break;
+            }
         }
-
-        row ++;
     }
 
     return NULL;
@@ -83,10 +94,12 @@ int main(int argc, char* argv[]) {
     create_window(&output_window, x/2, y, x/2, 0);
     pthread_t receive_thread;
     pthread_t write_thread;
+    FILE* log = fopen("log.txt", "w");
 
     if ((strcmp(argv[1], "-s") != 0 && strcmp(argv[1], "-c"))) {
-        printf(stderr, "Usare: %s -s|-c ip port\n", argv[0]);
-        exit(EXIT_FAILURE);
+	    endwin();
+        printf("\tHelp good-chat!\nUsage: -s | -c ip port\n\t1) -s: Opzione server\n\t2) -c: Opzione client, speficare anche l'ip e il numero di porta del server\n");
+        return 0;
     }
 
     else if (strcmp(argv[1], "-s") == 0) {
@@ -97,45 +110,55 @@ int main(int argc, char* argv[]) {
         // Creazione del socket del server
         server_sock = socket(AF_INET, SOCK_STREAM, 0);
         if (server_sock < 0) {
-            perror("Errore nella creazione del socket del server");
-            endwin();
+            endwin();	// in caso di errore da parte di ogni primitiva cancello l'intera finestra ncurses.
+	        fprintf(log, "%s\n", "Creazione mezzo socket del server -> ERRORE");
+            // perror("Errore nella creazione del socket del server");
             exit(EXIT_FAILURE);
         }
+        fprintf(log, "%s\n", "Creazione mezzo socket del server -> OK");
 
-        // Inizializzazione dell'indirizzo del server
+
         memset(&server_addr, 0, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
         server_addr.sin_addr.s_addr = INADDR_ANY;
         server_addr.sin_port = htons(SERVER_PORT);
 
-        // Binding del socket del server all'indirizzo locale
+        // Binding del mezzo socket del server all'indirizzo locale
         if (bind(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-            perror("Errore nel binding del socket del server");
             endwin();
-            exit(EXIT_FAILURE);
-        }
-
-        // Mette il socket del server in ascolto di connessioni
-        if (listen(server_sock, 1) < 0) {
-            perror("Errore nella messa in ascolto del socket del server");
-            endwin();
-            exit(EXIT_FAILURE);
-        }
-
-        // Accetta la connessione in arrivo
-        client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &client_len);
-        if (client_sock < 0) {
-            perror("Errore nell'accettazione della connessione");
-            endwin();
+            fprintf(log, "%s\n", "Binding del mezzo socket del server -> ERRORE");
+            // perror("Errore nel binding del socket del server");
             exit(EXIT_FAILURE);
         }
         
+        fprintf(log, "%s\n", "Binding del mezzo socket del server -> OK");
+        
+        // Metto il mezzo socket del server in ascolto di connessioni, con una coda massima di 1 persona.
+        if (listen(server_sock, 1) < 0) {
+            endwin();
+            fprintf(log, "%s\n", "Listen del mezzo socket del server -> ERRORE");
+            // perror("Errore nella messa in ascolto del socket del server");
+            exit(EXIT_FAILURE);
+        }
+        fprintf(log, "%s\n", "Listen del mezzo socket del server -> OK");
+
+        // Metto il mezzo socket del server in grado di accettare connessioni
+        client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &client_len);
+        if (client_sock < 0) {
+            // perror("Errore nell'accettazione della connessione");
+            endwin();
+            fprintf(log, "%s\n", "Accettazione della connessione -> ERRORE");
+            exit(EXIT_FAILURE);
+        }
+        fprintf(log, "%s\n", "Accettazione della connessione -> OK");
+        fclose(log);
 
         // Creazione dei thread per la ricezione e l'invio dei messaggi
         pthread_create(&receive_thread, NULL, get_message_from_host, &client_sock);
         pthread_create(&write_thread, NULL, send_message_to_host, &client_sock);
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
+        close(server_sock);
         wrefresh(input_window);
     } else if (strcmp(argv[1], "-c") == 0) {
         int client_sock;
@@ -145,37 +168,37 @@ int main(int argc, char* argv[]) {
         // Creazione del socket del client
         client_sock = socket(AF_INET, SOCK_STREAM, 0);
         if (client_sock < 0) {
-            perror("Errore nella creazione del socket del client");
+            // perror("Errore nella creazione del socket del client");
             endwin();
+            fprintf(log, "%s\n", "Creazione del mezzo socket del client -> ERRORE");
             exit(EXIT_FAILURE);
         }
-
-        // Risoluzione dell'indirizzo IP del server
+        fprintf(log, "%s\n", "Creazione del mezzo socket del client -> OK");
         
-
-        // Inizializzazione dell'indirizzo del server
         memset(&server_addr, 0, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
-        // memcpy(&server_addr.sin_addr, hp->h_addr, hp->h_length);
+
         server_addr.sin_port = htons(SERVER_PORT);
-        inet_pton(AF_INET, argv[2], &server_addr.sin_addr);
+        inet_pton(AF_INET, argv[2], &server_addr.sin_addr);	// assegno l'ip del server alla quale il client si dovrà connettere.
 
         // Connessione al server
         if (connect(client_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-            perror("Errore durante la connessione al server");
+            fprintf(log, "%s\n", "Connessione al server -> ERRORE");
+            // perror("Errore durante la connessione al server");
             endwin();
             exit(EXIT_FAILURE);
         }
-
+        fprintf(log, "%s\n", "Connessione al server -> OK");
         // Creazione dei thread per la ricezione e l'invio dei messaggi
+        
         pthread_create(&receive_thread, NULL, get_message_from_host, &client_sock);
         pthread_create(&write_thread, NULL, send_message_to_host, &client_sock);
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
+        close(client_sock);
 
-    } else {
-    	printf("\tHelp good-chat!\nUsage: -s | -c ip port\n-s: Opzione server\n2)-c Opzione client, speficare anche l'ip e il numero di porta del server");
-	  }
+    }
+
     wrefresh(input_window);
     wrefresh(output_window);
     delwin(input_window);
