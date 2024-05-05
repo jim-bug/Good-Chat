@@ -25,7 +25,6 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 WINDOW* input_window;
 WINDOW* output_window;
 int row = 1;
-int state = 1;
 // Funzione che crea una finestra con una box
 void create_window(WINDOW** new_win, int width, int height, int x, int y){
 	    *new_win = newwin(height, width, y, x);
@@ -39,7 +38,6 @@ void* get_message_from_host(void* arg) {
     // int row = 1;
     char buf[MAX_LENGTH_MSG]; // Buffer per i dati
     while (1) {
-        state = 0;
         ssize_t bytes_read = recv(sockfd, buf, sizeof(buf), 0);
         if (bytes_read < 0) {
             perror("Errore nella lettura dal sockettttttt");
@@ -48,14 +46,13 @@ void* get_message_from_host(void* arg) {
             break;
         }
         buf[bytes_read] = '\0';
-        state = 1;
-        pthread_mutex_lock(&mutex);
-        row ++;
-        pthread_mutex_unlock(&mutex);
+
 //        snprintf(buf, 300, "Client: %s", buf);
         mvwprintw(output_window, row, 1, "Client> %s", buf);
         wrefresh(output_window);
+        pthread_mutex_lock(&mutex);
         row ++;
+        pthread_mutex_unlock(&mutex);
     }
 
     return NULL;
@@ -63,14 +60,14 @@ void* get_message_from_host(void* arg) {
 
 void* send_message_to_host(void* arg) {
     int sockfd = *((int*)arg);
-    int row = 1;
+    // int row = 1;
     char buf[MAX_LENGTH_MSG];
 
     while (1) {
-        if(state != 0 && getch()){
-            pthread_mutex_lock(&mutex);
-                row ++;
-            pthread_mutex_unlock(&mutex);
+        char ch;
+        wmove(input_window, row, 4);
+        if(ch = getch() != ERR){
+            
             mvwprintw(input_window, row, 1, "Me>");
             mvwgetstr(input_window, row, 4, buf);
             buf[strcspn(buf, "\n")] = '\0';
@@ -80,6 +77,9 @@ void* send_message_to_host(void* arg) {
                 perror("Errore nella scrittura sul socket 2");
                 break;
             }
+            pthread_mutex_lock(&mutex);
+            row ++;
+            pthread_mutex_unlock(&mutex);
         }
     }
 
