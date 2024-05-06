@@ -24,34 +24,52 @@
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 WINDOW* input_window;
 WINDOW* output_window;
-int row = 1;
+WINDOW* win3;
+int start_y, start_x;
+
+int row_shared_window = 1;
+
+void print_stack_trace(){
+        delwin(input_window);
+        delwin(output_window);
+        endwin();
+        printf("\tHelp good-chat!\nUsage: -s | -c ip port\n\t1) -s: Opzione server\n\t2) -c: Opzione client, speficare anche l'ip e il numero di porta del server\n");
+        exit(EXIT_FAILURE);
+}
+
 // Funzione che crea una finestra con una box
-void create_window(WINDOW** new_win, int width, int height, int x, int y){
-	    *new_win = newwin(height, width, y, x);
+void create_window(WINDOW** new_win, int row, int col, int begin_y, int begin_x){
+	    *new_win = newwin(row, col, begin_y, begin_x);
         refresh();
-        // box(*new_win, '|', '|');
+        // box(*new_win, '|', '|');     // piccolo debug per le finestre
         wrefresh(*new_win);
 }
 
 void* get_message_from_host(void* arg) {
     int sockfd = *((int*)arg);
-    // int row = 1;
     char buf[MAX_LENGTH_MSG]; // Buffer per i dati
     while (1) {
         ssize_t bytes_read = recv(sockfd, buf, sizeof(buf), 0);
         if (bytes_read < 0) {
-            perror("Errore nella lettura dal sockettttttt");
+            perror("Errore nella lettura dal socket");
             break;
-        } else if (bytes_read == 0) {
+        } 
+        else if (bytes_read == 0) {
             break;
         }
         buf[bytes_read] = '\0';
-
 //        snprintf(buf, 300, "Client: %s", buf);
-        mvwprintw(output_window, row, 1, "Client> %s", buf);
+        mvwprintw(output_window, row_shared_window, 1, "Client> %s", buf);
         wrefresh(output_window);
+
         pthread_mutex_lock(&mutex);
-        row ++;
+        if(row_shared_window >= (start_y-4)){
+            wclear(output_window);
+            row_shared_window = 1;    
+        }
+        else{
+            row_shared_window ++;
+        }
         pthread_mutex_unlock(&mutex);
     }
 
@@ -60,48 +78,55 @@ void* get_message_from_host(void* arg) {
 
 void* send_message_to_host(void* arg) {
     int sockfd = *((int*)arg);
-    // int row = 1;
     char buf[MAX_LENGTH_MSG];
 
     while (1) {
-        char ch;
-        wmove(input_window, row, 4);
-        if(ch = getch() != ERR){
-            
-            mvwprintw(input_window, row, 1, "Me>");
-            mvwgetstr(input_window, row, 4, buf);
-            buf[strcspn(buf, "\n")] = '\0';
-            wrefresh(input_window);
-            ssize_t bytes_written = write(sockfd, buf, sizeof(buf));
-            if (bytes_written < 0) {
-                perror("Errore nella scrittura sul socket 2");
-                break;
-            }
-            pthread_mutex_lock(&mutex);
-            row ++;
-            pthread_mutex_unlock(&mutex);
+
+        mvwprintw(win3, 1, 1, "Me> ");
+        mvwgetstr(win3, 1, 4, buf);
+        buf[strcspn(buf, "\n")] = '\0';
+        mvwprintw(input_window, row_shared_window, 1, "Me> %s", buf);       // mando a video sulla finestra di input ciò che ho inviato
+        wclear(win3);
+        ssize_t bytes_written = write(sockfd, buf, sizeof(buf));
+        if (bytes_written < 0) {
+            perror("Errore nella scrittura sul socket 2");
+            break;
         }
+        wrefresh(input_window);
+        wrefresh(win3);
+
+        pthread_mutex_lock(&mutex);
+        if(row_shared_window >= (start_y-4)){
+            wclear(input_window);
+            row_shared_window = 1;    
+        }
+        else{
+            row_shared_window ++;
+        }
+        pthread_mutex_unlock(&mutex);
     }
 
     return NULL;
 }
 
 int main(int argc, char* argv[]) {
-    initscr(); // Inizializza la finestra ncurses principale
-    int y, x;
-    getmaxyx(stdscr, y, x); // Ottenere le dimensioni dello schermo
-    create_window(&input_window, x/2, y, 0, 0);
-    create_window(&output_window, x/2, y, x/2, 0);
     pthread_t receive_thread;
     pthread_t write_thread;
     FILE* log = fopen("log.txt", "w");
+    initscr(); // Inizializza la finestra ncurses principale
 
-    if ((strcmp(argv[1], "-s") != 0 && strcmp(argv[1], "-c"))) {
-	    endwin();
-        printf("\tHelp good-chat!\nUsage: -s | -c ip port\n\t1) -s: Opzione server\n\t2) -c: Opzione client, speficare anche l'ip e il numero di porta del server\n");
-        return 0;
+    getmaxyx(stdscr, start_y, start_x); // Ottenere le dimensioni dello schermo
+    create_window(&input_window, start_y-4, start_x/2, 0, 0);
+    create_window(&output_window, start_y-4, start_x/2, 0, start_x/2);
+    create_window(&win3, 4, start_x, start_y-4, 0);
+
+
+    if (argc < 2) {
+        print_stack_trace();
     }
-
+    else if(strcmp(argv[1], "-s") != 0 && strcmp(argv[1], "-c") != 0){
+        print_stack_trace();
+    }
     else if (strcmp(argv[1], "-s") == 0) {
         int server_sock, client_sock;
         struct sockaddr_in server_addr, client_addr;
