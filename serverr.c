@@ -89,10 +89,10 @@ void* send_message_to_host(void* arg) {
         }
         mvwprintw(win3, 1, 1, "Me> ");
         mvwgetstr(win3, 1, 4, buf);
-        buf[strcspn(buf, "\n")] = '\0';
+        // buf[strcspn(buf, "\n")] = '\0';
         mvwprintw(input_window, row_shared_window, 1, "Me> %s", buf);       // mando a video sulla finestra di input ciò che ho inviato
         wclear(win3);
-        ssize_t bytes_written = write(sockfd, buf, sizeof(buf));
+        ssize_t bytes_written = write(sockfd, buf, strlen(buf)+1);
         if (bytes_written < 0) {
             perror("Errore nella scrittura sul socket 2");
             break;
@@ -195,6 +195,7 @@ int main(int argc, char* argv[]) {
     } 
     else if (strcmp(argv[1], "-c") == 0 && atoi(argv[3]) >= 1024 && atoi(argv[3]) <= 49151) {
         int client_sock;
+        unsigned short port = (unsigned short)atoi(argv[3]);
         struct sockaddr_in server_addr;
         struct hostent* hp;
 
@@ -211,7 +212,7 @@ int main(int argc, char* argv[]) {
         memset(&server_addr, 0, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
 
-        server_addr.sin_port = htons(atoi(argv[3]));
+        server_addr.sin_port = htons(port);        // converto in intero la stringa che indica il numero di porta
         inet_pton(AF_INET, argv[2], &server_addr.sin_addr);	// assegno l'ip del server alla quale il client si dovrà connettere.
 
         // Connessione al server
