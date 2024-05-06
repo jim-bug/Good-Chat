@@ -49,10 +49,6 @@ void* get_message_from_host(void* arg) {
     int sockfd = *((int*)arg);
     char buf[MAX_LENGTH_MSG]; // Buffer per i dati
     while (1) {
-        if(row_shared_window >= (start_y-4)){
-            wclear(output_window);
-            row_shared_window = 1;    
-        }
         ssize_t bytes_read = recv(sockfd, buf, sizeof(buf), 0);
         if (bytes_read < 0) {
             perror("Errore nella lettura dal socket");
@@ -67,7 +63,15 @@ void* get_message_from_host(void* arg) {
         wrefresh(output_window);
 
         pthread_mutex_lock(&mutex);
-        row_shared_window ++;
+        if(row_shared_window >= (start_y-4)){
+            wclear(input_window);
+            wclear(output_window);
+            row_shared_window = 1;    
+        }
+        else{
+            row_shared_window ++;
+        }
+        wrefresh(output_window);
         pthread_mutex_unlock(&mutex);
     }
 
@@ -97,7 +101,15 @@ void* send_message_to_host(void* arg) {
         wrefresh(win3);
 
         pthread_mutex_lock(&mutex);
+        if(row_shared_window >= (start_y-4)){
+            wclear(input_window);
+            wclear(output_window);
+            row_shared_window = 1;    
+        }
+        else{
             row_shared_window ++;
+        }
+        wrefresh(input_window);
         pthread_mutex_unlock(&mutex);
     }
 
@@ -180,7 +192,8 @@ int main(int argc, char* argv[]) {
         pthread_join(write_thread, NULL);
         close(server_sock);
         wrefresh(input_window);
-    } else if (strcmp(argv[1], "-c") == 0) {
+    } 
+    else if (strcmp(argv[1], "-c") == 0) {
         int client_sock;
         struct sockaddr_in server_addr;
         struct hostent* hp;
@@ -210,13 +223,12 @@ int main(int argc, char* argv[]) {
         }
         fprintf(log, "%s\n", "Connessione al server -> OK");
         // Creazione dei thread per la ricezione e l'invio dei messaggi
-        
+        fclose(log);
         pthread_create(&receive_thread, NULL, get_message_from_host, &client_sock);
         pthread_create(&write_thread, NULL, send_message_to_host, &client_sock);
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
         close(client_sock);
-
     }
 
     wrefresh(input_window);
