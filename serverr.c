@@ -10,7 +10,7 @@
 #include <ncurses.h>
 #include <arpa/inet.h>
 
-#define SERVER_PORT 8085
+#define SERVER_PORT 4869
 #define MAX_LENGTH_MSG 1024
 
 /*
