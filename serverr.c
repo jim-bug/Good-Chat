@@ -49,6 +49,10 @@ void* get_message_from_host(void* arg) {
     int sockfd = *((int*)arg);
     char buf[MAX_LENGTH_MSG]; // Buffer per i dati
     while (1) {
+        if(row_shared_window >= (start_y-4)){
+            wclear(output_window);
+            row_shared_window = 1;    
+        }
         ssize_t bytes_read = recv(sockfd, buf, sizeof(buf), 0);
         if (bytes_read < 0) {
             perror("Errore nella lettura dal socket");
@@ -63,13 +67,7 @@ void* get_message_from_host(void* arg) {
         wrefresh(output_window);
 
         pthread_mutex_lock(&mutex);
-        if(row_shared_window >= (start_y-4)){
-            wclear(output_window);
-            row_shared_window = 1;    
-        }
-        else{
-            row_shared_window ++;
-        }
+        row_shared_window ++;
         pthread_mutex_unlock(&mutex);
     }
 
@@ -81,7 +79,10 @@ void* send_message_to_host(void* arg) {
     char buf[MAX_LENGTH_MSG];
 
     while (1) {
-
+        if(row_shared_window >= (start_y-4)){
+            wclear(input_window);
+            row_shared_window = 1;    
+        }
         mvwprintw(win3, 1, 1, "Me> ");
         mvwgetstr(win3, 1, 4, buf);
         buf[strcspn(buf, "\n")] = '\0';
@@ -96,13 +97,7 @@ void* send_message_to_host(void* arg) {
         wrefresh(win3);
 
         pthread_mutex_lock(&mutex);
-        if(row_shared_window >= (start_y-4)){
-            wclear(input_window);
-            row_shared_window = 1;    
-        }
-        else{
             row_shared_window ++;
-        }
         pthread_mutex_unlock(&mutex);
     }
 
