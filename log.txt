@@ -1,2 +1,0 @@
-Creazione del mezzo socket del client -> OK
-Connessione al server -> OK
