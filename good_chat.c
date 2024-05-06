@@ -10,7 +10,7 @@
 #include <ncurses.h>
 #include <arpa/inet.h>
 
-#define SERVER_PORT 5678
+#define SERVER_PORT 4869
 #define MAX_LENGTH_MSG 1024
 
 /*
@@ -43,6 +43,7 @@ void write_log(char log_message[], int state_error){
             delwin(input_window);
             delwin(output_window);
             endwin();	// in caso di errore da parte di ogni primitiva cancello l'intera finestra ncurses.
+            fprintf(log_file, "%s\n", log_message);
             fclose(log_file);
             exit(EXIT_FAILURE);
         }
