@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
         close(server_sock);
         wrefresh(input_window);
     } 
-    else if (strcmp(argv[1], "-c") == 0 && aton(argv[3]) >= 1024 && aton(argv[3]) <= 49151) {
+    else if (strcmp(argv[1], "-c") == 0 && atoi(argv[3]) >= 1024 && atoi(argv[3]) <= 49151) {
         int client_sock;
         struct sockaddr_in server_addr;
         struct hostent* hp;
@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
         memset(&server_addr, 0, sizeof(server_addr));
         server_addr.sin_family = AF_INET;
 
-        server_addr.sin_port = htons(aton(argv[3]));
+        server_addr.sin_port = htons(atoi(argv[3]));
         inet_pton(AF_INET, argv[2], &server_addr.sin_addr);	// assegno l'ip del server alla quale il client si dovrà connettere.
 
         // Connessione al server
