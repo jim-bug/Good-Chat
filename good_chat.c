@@ -10,7 +10,7 @@
 #include <ncurses.h>
 #include <arpa/inet.h>
 
-#define SERVER_PORT 4869
+#define SERVER_PORT 4870
 #define MAX_LENGTH_MSG 1024
 
 /*
@@ -28,6 +28,7 @@ WINDOW* write_window;
 FILE* log_file;
 int start_y, start_x;
 int row_shared_window = 1;
+
 
 void print_stack_trace(){
         delwin(input_window);
@@ -71,7 +72,11 @@ void* get_message_from_host(void* arg) {        // funzione che riceve qualcosa 
             break;
         }
         buf[bytes_read] = '\0';
+        if(strcmp(buf, "exit") == 0){
+            close(sockfd);
 
+            break;
+        }
         mvwprintw(output_window, row_shared_window, 1, "Client> %s", buf);
         wrefresh(output_window);
 
@@ -98,7 +103,10 @@ void* send_message_to_host(void* arg) {     // funzione che invia qualcosa al se
     while (1) {
         mvwprintw(write_window, 1, 1, "Me> ");
         mvwgetstr(write_window, 1, 4, buf);
-
+        if(strcmp(buf, "exit") == 0){
+            close(sockfd);
+            break;
+        }
         mvwprintw(input_window, row_shared_window, 1, "Me> %s", buf);       // mando a video sulla finestra di input ciò che ho inviato
         wclear(write_window);
 
@@ -194,7 +202,6 @@ int main(int argc, char* argv[]) {
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
         fclose(log_file);
-        close(server_sock);
     }
 
     else if (strcmp(argv[1], "-c") == 0 && atoi(argv[3]) >= 1024 && atoi(argv[3]) <= 49151) { // caso client, con controllo sul numero di porta scelto.
@@ -231,7 +238,6 @@ int main(int argc, char* argv[]) {
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
         fclose(log_file);
-        close(client_sock);
     }
     else{
         print_stack_trace();
