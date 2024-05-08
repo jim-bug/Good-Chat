@@ -30,27 +30,29 @@ int start_y, start_x;
 int row_shared_window = 1;
 
 
-void print_stack_trace(){
+void closing_sequence(){
         delwin(input_window);
         delwin(output_window);
         endwin();
         fclose(log_file);
+}
+
+void print_stack_trace(){
+        closing_sequence();
         printf("\tHelp good-chat!\nUsage: -s | -c ip port\n\t1) -s: Opzione server\n\t2) -c: Opzione client, speficare anche l'ip e il numero di porta(compreso tra 1024 e 49515) del server\n");
         exit(EXIT_FAILURE);
 }
 
 void write_log(char log_message[], int state_error){
         if(state_error == 1){
-            delwin(input_window);
-            delwin(output_window);
-            endwin();	// in caso di errore da parte di ogni primitiva cancello l'intera finestra ncurses.
             fprintf(log_file, "%s\n", log_message);
-            fclose(log_file);
+            closing_sequence();
             exit(EXIT_FAILURE);
         }
         fprintf(log_file, "%s\n", log_message);
         
 }
+
 // Funzione che crea una finestra con una box
 void create_window(WINDOW** new_win, int row, int col, int begin_y, int begin_x){
 	    *new_win = newwin(row, col, begin_y, begin_x);
@@ -62,23 +64,12 @@ void create_window(WINDOW** new_win, int row, int col, int begin_y, int begin_x)
 void* get_message_from_host(void* arg) {        // funzione che riceve qualcosa dal server/client
     int sockfd = *((int*)arg);
     char buf[MAX_LENGTH_MSG]; // Buffer per i dati
-    while (1) {
-        ssize_t bytes_read = recv(sockfd, buf, sizeof(buf), 0);
-        if (bytes_read < 0) {
-            perror("Errore nella lettura dal socket");
-            break;
-        } 
-        else if (bytes_read == 0) {
-            break;
-        }
+    ssize_t bytes_read;
+    do{
+        bytes_read = recv(sockfd, buf, sizeof(buf), 0);
         buf[bytes_read] = '\0';
-        if(strcmp(buf, "exit") == 0){
-            close(sockfd);
-
-            break;
-        }
         mvwprintw(output_window, row_shared_window, 1, "Client> %s", buf);
-        wrefresh(output_window);
+       
 
         pthread_mutex_lock(&mutex);
         if(row_shared_window >= (start_y-4)){
@@ -89,9 +80,11 @@ void* get_message_from_host(void* arg) {        // funzione che riceve qualcosa 
         else{
             row_shared_window ++;
         }
-        wrefresh(output_window);
         pthread_mutex_unlock(&mutex);
-    }
+        wrefresh(output_window);
+    } while(strcmp(buf, "exit") != 0 || bytes_read <= 0);
+    close(sockfd);
+    closing_sequence();
 
     return NULL;
 }
@@ -99,24 +92,15 @@ void* get_message_from_host(void* arg) {        // funzione che riceve qualcosa 
 void* send_message_to_host(void* arg) {     // funzione che invia qualcosa al server/client
     int sockfd = *((int*)arg);
     char buf[MAX_LENGTH_MSG];
-
-    while (1) {
+    ssize_t bytes_written;
+    do {
         mvwprintw(write_window, 1, 1, "Me> ");
         mvwgetstr(write_window, 1, 4, buf);
-        if(strcmp(buf, "exit") == 0){
-            close(sockfd);
-            break;
-        }
+
         mvwprintw(input_window, row_shared_window, 1, "Me> %s", buf);       // mando a video sulla finestra di input ciò che ho inviato
         wclear(write_window);
 
-        ssize_t bytes_written = write(sockfd, buf, strlen(buf)+1);
-        if (bytes_written < 0) {
-            perror("Errore nella scrittura sul socket 2");
-            break;
-        }
-        wrefresh(input_window);
-        wrefresh(write_window);
+        bytes_written = write(sockfd, buf, strlen(buf)+1);
 
         pthread_mutex_lock(&mutex);
         if(row_shared_window >= (start_y-4)){
@@ -127,9 +111,12 @@ void* send_message_to_host(void* arg) {     // funzione che invia qualcosa al se
         else{
             row_shared_window ++;
         }
-        wrefresh(input_window);
         pthread_mutex_unlock(&mutex);
-    }
+        wrefresh(input_window);
+        wrefresh(write_window);
+    } while(strcmp(buf, "exit") != 0 || bytes_written <= 0);
+    close(sockfd);
+    closing_sequence();
 
     return NULL;
 }
@@ -201,7 +188,6 @@ int main(int argc, char* argv[]) {
         pthread_create(&write_thread, NULL, send_message_to_host, &client_sock);
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
-        fclose(log_file);
     }
 
     else if (strcmp(argv[1], "-c") == 0 && atoi(argv[3]) >= 1024 && atoi(argv[3]) <= 49151) { // caso client, con controllo sul numero di porta scelto.
@@ -237,7 +223,6 @@ int main(int argc, char* argv[]) {
         pthread_create(&write_thread, NULL, send_message_to_host, &client_sock);
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
-        fclose(log_file);
     }
     else{
         print_stack_trace();
