@@ -96,7 +96,6 @@ void* send_message_to_host(void* arg) {     // funzione che invia qualcosa al se
         wclear(write_window);
 
         bytes_written = write(sockfd, buf, strlen(buf)+1);
-        fprintf(log_file, "%s", "Bloccante?");
         pthread_mutex_lock(&mutex);
         // sezione critica, inizio
         if(window_rows_sharing >= (start_y-4)){

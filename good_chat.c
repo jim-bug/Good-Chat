@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
     pthread_t listener;
     char message_connection_log[MAX_LENGTH_MSG];
     log_file = fopen("log.txt", "w");
-
+    
     initscr(); // Inizializza la finestra ncurses principale
     getmaxyx(stdscr, start_y, start_x); // Ottengo le dimensioni dello schermo
     create_window(&input_window, start_y-4, start_x/2, 0, 0);   // 51 x 101 parte da riga:0 e colonna: 0
