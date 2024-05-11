@@ -1,4 +1,11 @@
-// File: operazioni_matematiche.h
+/*
+ * Autori: Gianluca Pepe e Ignazio Leonardo Calogero Sperandeo.
+ * Data: 04/05/2024
+ * Consegna: Realizzare una chat in C che presenti una CLI. La chat deve permettere il dialogo tra due terminali nella stessa LAN e in LAN diverse.
+ * Link al repo: https://github.com/jim-bug/Good-Chat
+ * Riferimenti alla parte dell'ingegnieria del software: 
+ * Nome progetto: Good-Chat
+*/
 
 #ifndef CHAT_H
 #define CHAT_H

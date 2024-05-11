@@ -1,4 +1,0 @@
-Per compilare Good-Chat si usa la seguente riga:
-
-								gcc -o good-chat -pthread good_chat.c -lncurses
-Per eseguirlo bis
