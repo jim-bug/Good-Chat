@@ -1,0 +1,14 @@
+Benvenuti nel manuale dell'utente di Good-Chat:
+
+Per usare Good_Chat, bisogna prima aver installato:
+
+- ncurses
+- gcc
+
+Per installare ncurses da terminale dare -> sudo apt-get update && sudo apt-get install libncurses-dev -y
+Per installare gcc da terminale dare -> sudo apt-get update && sudo apt-get install gcc -y
+
+Per poter eseguire Good-Chat bisogna prima compilare il programma -> gcc -o good-chat -pthread good-chat.c chat.c -lncurses
+
+e successivamente eseguirlo, Good-Chat prevde
+

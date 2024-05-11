@@ -1,4 +1,5 @@
 Creazione mezzo socket del server -> OK
 Binding del mezzo socket del server -> OK
 Listen del mezzo socket del server -> OK
-Connessione avvenuta da parte della destinazione: 192.168.46.242:45922
+Connessione avvenuta da parte della destinazione: 192.168.1.11:42650
+Bloccante?Bloccante?Bloccante?Bloccante?Bloccante?Bloccante?Bloccante?Bloccante?Bloccante?

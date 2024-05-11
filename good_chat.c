@@ -9,121 +9,28 @@
 #include <netdb.h>
 #include <ncurses.h>
 #include <arpa/inet.h>
-
-#define SERVER_PORT 4870
-#define MAX_LENGTH_MSG 1024
+#include "chat.h"
 
 /*
  * Autori: Gianluca Pepe e Ignazio Leonardo Calogero Sperandeo.
  * Data: 04/05/2024
  * Consegna: Realizzare una chat in C che presenti una CLI. La chat deve permettere il dialogo tra due terminali nella stessa LAN e in LAN diverse.
  * Link al repo: https://github.com/jim-bug/Good-Chat
+ * Riferimenti alla parte dell'ingegnieria del software: 
  * Nome progetto: Good-Chat
 */
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 WINDOW* input_window;
 WINDOW* output_window;
 WINDOW* write_window;
 FILE* log_file;
-int start_y, start_x;
-int row_shared_window = 1;
-
-
-void closing_sequence(){
-        delwin(input_window);
-        delwin(output_window);
-        endwin();
-        fclose(log_file);
-}
-
-void print_stack_trace(){
-        closing_sequence();
-        printf("\tHelp good-chat!\nUsage: -s | -c ip port\n\t1) -s: Opzione server\n\t2) -c: Opzione client, speficare anche l'ip e il numero di porta(compreso tra 1024 e 49515) del server\n");
-        exit(EXIT_FAILURE);
-}
-
-void write_log(char log_message[], int state_error){
-        if(state_error == 1){
-            fprintf(log_file, "%s\n", log_message);
-            closing_sequence();
-            exit(EXIT_FAILURE);
-        }
-        fprintf(log_file, "%s\n", log_message);
-        
-}
-
-// Funzione che crea una finestra con una box
-void create_window(WINDOW** new_win, int row, int col, int begin_y, int begin_x){
-	    *new_win = newwin(row, col, begin_y, begin_x);
-        refresh();
-        // box(*new_win, '|', '|');     // piccolo debug per le finestre
-        wrefresh(*new_win);
-}
-
-void* get_message_from_host(void* arg) {        // funzione che riceve qualcosa dal server/client
-    int sockfd = *((int*)arg);
-    char buf[MAX_LENGTH_MSG]; // Buffer per i dati
-    ssize_t bytes_read;
-    do{
-        bytes_read = recv(sockfd, buf, sizeof(buf), 0);
-        buf[bytes_read] = '\0';
-        mvwprintw(output_window, row_shared_window, 1, "Client> %s", buf);
-       
-
-        pthread_mutex_lock(&mutex);
-        if(row_shared_window >= (start_y-4)){
-            wclear(input_window);
-            wclear(output_window);
-            row_shared_window = 1;      // reimposto il puntatore a 1, così i messaggi li visualizzo nella finestra pulita.    
-        }
-        else{
-            row_shared_window ++;
-        }
-        pthread_mutex_unlock(&mutex);
-        wrefresh(output_window);
-    } while(strcmp(buf, "exit") != 0 || bytes_read <= 0);
-    close(sockfd);
-    closing_sequence();
-
-    return NULL;
-}
-
-void* send_message_to_host(void* arg) {     // funzione che invia qualcosa al server/client
-    int sockfd = *((int*)arg);
-    char buf[MAX_LENGTH_MSG];
-    ssize_t bytes_written;
-    do {
-        mvwprintw(write_window, 1, 1, "Me> ");
-        mvwgetstr(write_window, 1, 4, buf);
-
-        mvwprintw(input_window, row_shared_window, 1, "Me> %s", buf);       // mando a video sulla finestra di input ciò che ho inviato
-        wclear(write_window);
-
-        bytes_written = write(sockfd, buf, strlen(buf)+1);
-
-        pthread_mutex_lock(&mutex);
-        if(row_shared_window >= (start_y-4)){
-            wclear(input_window);
-            wclear(output_window);
-            row_shared_window = 1;    
-        }
-        else{
-            row_shared_window ++;
-        }
-        pthread_mutex_unlock(&mutex);
-        wrefresh(input_window);
-        wrefresh(write_window);
-    } while(strcmp(buf, "exit") != 0 || bytes_written <= 0);
-    close(sockfd);
-    closing_sequence();
-
-    return NULL;
-}
+int start_x;
+int start_y;
+pthread_t receive_thread;
+pthread_t write_thread;
 
 int main(int argc, char* argv[]) {
-    pthread_t receive_thread;
-    pthread_t write_thread;
+    pthread_t listener;
     char message_connection_log[MAX_LENGTH_MSG];
     log_file = fopen("log.txt", "w");
 
@@ -179,15 +86,18 @@ int main(int argc, char* argv[]) {
             snprintf(message_connection_log, MAX_LENGTH_MSG, "Connessione non avvenuta da parte della destinazione: %s:%d", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
             write_log(message_connection_log, 1);
         }
-        snprintf(message_connection_log, MAX_LENGTH_MSG, "Connessione avvenuta da parte della destinazione: %s:%d", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        snprintf(message_connection_log, MAX_LENGTH_MSG, "Connessione avvenuta da parte della destinazione: %s:%d", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));      // funzioni usate per mandare a video porta e ip del client.
         write_log(message_connection_log, 0);
         
 
         // Creazione dei thread per la ricezione e l'invio dei messaggi
         pthread_create(&receive_thread, NULL, get_message_from_host, &client_sock);
         pthread_create(&write_thread, NULL, send_message_to_host, &client_sock);
+        pthread_create(&listener, NULL, listen_threads, NULL);
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
+        pthread_join(listener, NULL);
+        close(server_sock);
     }
 
     else if (strcmp(argv[1], "-c") == 0 && atoi(argv[3]) >= 1024 && atoi(argv[3]) <= 49151) { // caso client, con controllo sul numero di porta scelto.
@@ -221,17 +131,16 @@ int main(int argc, char* argv[]) {
         // Creazione dei thread per la ricezione e l'invio dei messaggi
         pthread_create(&receive_thread, NULL, get_message_from_host, &client_sock);
         pthread_create(&write_thread, NULL, send_message_to_host, &client_sock);
+        pthread_create(&listener, NULL, listen_threads, NULL);
         pthread_join(receive_thread, NULL);
         pthread_join(write_thread, NULL);
+        pthread_join(listener, NULL);
+
+        close(client_sock);
     }
     else{
         print_stack_trace();
     }
     
-    wrefresh(input_window);
-    wrefresh(output_window);
-    delwin(input_window);
-    delwin(output_window);
-    endwin();
     return 0;
 }
