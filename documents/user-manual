@@ -10,5 +10,20 @@ Per installare gcc da terminale dare -> sudo apt-get update && sudo apt-get inst
 
 Per poter eseguire Good-Chat bisogna prima compilare il programma -> gcc -o good-chat -pthread good-chat.c chat.c -lncurses
 
-e successivamente eseguirlo, Good-Chat prevde
+e successivamente eseguirlo, Good-Chat prevde due opzioni:
 
+- Opzione server
+- Opzione client
+
+Per fare da server digitare da terminale -> ./chat -s
+Per fare da client digitare da terminale -> ./chat -c IPv4_SERVER PORT_SERVER
+
+Nota PORT_SERVER deve essere un numero compreso da 1024 a 49151 inclusi. Il server come porta predefinita usa la 4870.
+
+Alla fine di ogni connessione i due host avrannoa disposizione un file di log che riassume lo stato della connessione.
+
+
+
+Autori:
+Gianluca Pepe
+Ignazio Leonardo Calogero Sperandeo

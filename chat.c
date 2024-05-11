@@ -116,6 +116,11 @@ void* send_message_to_host(void* arg) {     // funzione che invia qualcosa al se
     return NULL;
 }
 
+
+/*
+Funzione che eseguirà un terzo thread, starà sempre in attesa fin quando il valore della variabile flag_state_close non sara pari a y. In quel caso
+significa che uno dei due host vuole chiudere la connessione e perciò cancello i thread di ricezione e scrittura e chiamo la sequenza di chiusura.
+*/
 void* listen_threads(void* arg){
     while(flag_state_close != 'y');
     pthread_cancel(receive_thread);
